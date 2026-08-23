@@ -1,0 +1,79 @@
+{
+  "format": "exact-text-replacements-v1",
+  "replacements": [
+    {
+      "name": "AUTO JETWAY runtime DataRef",
+      "oldLines": [
+        "function pause_load_flt_handl() end",
+        "B738DR_pause_load_flt\t\t\t= create_dataref(\"laminar/b738/pause_load_flt\", \"number\", pause_load_flt_handl)",
+        "B738DR_apu_power_bus2 = 0;"
+      ],
+      "newLines": [
+        "function pause_load_flt_handl() end",
+        "B738DR_pause_load_flt\t\t\t= create_dataref(\"laminar/b738/pause_load_flt\", \"number\", pause_load_flt_handl)",
+        "",
+        "function auto_jetway_handl() end",
+        "B738DR_auto_jetway\t\t\t\t= create_dataref(\"laminar/B738/tab/auto_jetway\", \"number\", auto_jetway_handl)",
+        "B738DR_apu_power_bus2 = 0;"
+      ]
+    },
+    {
+      "name": "AUTO JETWAY compatibility default",
+      "oldLines": [
+        "\tB738DR_max_rnd_fail = 0",
+        "\tB738DR_fuel_pumps_off_placard = 0"
+      ],
+      "newLines": [
+        "\tB738DR_max_rnd_fail = 0",
+        "\tB738DR_auto_jetway = 1",
+        "\tB738DR_fuel_pumps_off_placard = 0"
+      ]
+    },
+    {
+      "name": "AUTO JETWAY global config validation",
+      "oldLines": [
+        "\t\t\t\telseif fms_txt == \"PAUSE LOAD FLT\" then",
+        "\t\t\t\t\tif temp_fmod ~= nil then",
+        "\t\t\t\t\t\tif temp_fmod == 1 then",
+        "\t\t\t\t\t\t\tB738DR_pause_load_flt = 1",
+        "\t\t\t\t\t\telse",
+        "\t\t\t\t\t\t\tB738DR_pause_load_flt = 0",
+        "\t\t\t\t\t\tend",
+        "\t\t\t\t\tend",
+        "\t\t\t\telseif fms_txt == \"FF EICAS\" then"
+      ],
+      "newLines": [
+        "\t\t\t\telseif fms_txt == \"PAUSE LOAD FLT\" then",
+        "\t\t\t\t\tif temp_fmod ~= nil then",
+        "\t\t\t\t\t\tif temp_fmod == 1 then",
+        "\t\t\t\t\t\t\tB738DR_pause_load_flt = 1",
+        "\t\t\t\t\t\telse",
+        "\t\t\t\t\t\t\tB738DR_pause_load_flt = 0",
+        "\t\t\t\t\t\tend",
+        "\t\t\t\t\tend",
+        "\t\t\t\telseif fms_txt == \"AUTO JETWAY\" and xfile_path_cfg == \"\" then",
+        "\t\t\t\t\t-- Global owner only. Missing, non-numeric and out-of-range values",
+        "\t\t\t\t\t-- retain the compatibility default ON.",
+        "\t\t\t\t\tif temp_fmod == 0 then",
+        "\t\t\t\t\t\tB738DR_auto_jetway = 0",
+        "\t\t\t\t\telse",
+        "\t\t\t\t\t\tB738DR_auto_jetway = 1",
+        "\t\t\t\t\tend",
+        "\t\t\t\telseif fms_txt == \"FF EICAS\" then"
+      ]
+    },
+    {
+      "name": "AUTO JETWAY global config save",
+      "oldLines": [
+        "\t\t\tfms_line = \"VANISH_Y       = \" .. string.format(\"%3d\", B738DR_vanish_y) .. \"\\n\""
+      ],
+      "newLines": [
+        "\t\t\tif xfile_path_cfg == \"\" then",
+        "\t\t\t\tfms_line = \"AUTO JETWAY    = \" .. string.format(\"%2d\", B738DR_auto_jetway) .. \"\\n\"",
+        "\t\t\t\tfile_navdata:write(fms_line)",
+        "\t\t\tend",
+        "\t\t\tfms_line = \"VANISH_Y       = \" .. string.format(\"%3d\", B738DR_vanish_y) .. \"\\n\""
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "aircraftFamily": "Zibo B737-800X for X-Plane 12",
+  "packageId": "wahltho.zibo-40535.auto-jetway",
+  "packageVersion": "0.1.0",
+  "payloads": [
+    {
+      "path": "patches/B738.a_fms.lua.json",
+      "sha256": "6d14898b3765068f53aadb070e707e6b4891371b677e92af11556ef90acf0842",
+      "size": 2967
+    },
+    {
+      "path": "patches/B738.tablet.lua.json",
+      "sha256": "4bf2298e8c36376f5333df1e4ad16494cadb0af2536ca237b6d6daa072a3e595",
+      "size": 3870
+    }
+  ],
+  "repositoryUrl": "https://github.com/wahltho/X-Plane-Zibo-Auto-Jetway",
+  "restartRequired": true,
+  "schemaVersion": 2,
+  "scope": {
+    "included": [
+      "persistent AUTO JETWAY ON/OFF option on REALISM SETTINGS page 2",
+      "compatibility default ON for missing, old or invalid config values",
+      "global variant configuration ownership without livery override",
+      "guards around all three stock automatic sim/ground_ops/jetway callsites"
+    ],
+    "notIncluded": [
+      "interception or replacement of the native X-Plane jetway command",
+      "changes to jetway detection, door selection or ground-service classification",
+      "complete Zibo or X-Plane aircraft files",
+      "changes to zibomod.xpl"
+    ]
+  },
+  "supportedUpstreamReleases": [
+    "Zibo 4.05.35"
+  ],
+  "targets": [
+    {
+      "operation": "exact-text-replacements-v1",
+      "payload": "patches/B738.a_fms.lua.json",
+      "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
+      "resultSha256": "d603ccd5e8ca9ad52972112f1f34ff3843f22a1173ba515eacfbd61e77ae211f",
+      "sourceSha256": [
+        "e2e427adffb030a3b7c8dc02a1adb971417be61bd22aa67a18e08f14d9d9390a"
+      ]
+    },
+    {
+      "operation": "exact-text-replacements-v1",
+      "payload": "patches/B738.tablet.lua.json",
+      "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
+      "resultSha256": "397eaa6babefe43031a7b16626678b691fc3a5cf150617ffd7642f882d6aec95",
+      "sourceSha256": [
+        "89598db3a999bade26faf960ad5c76f2d15bb08e7b1f8106a597e2998a2e8c72"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "format": "exact-text-replacements-v1",
+  "replacements": [
+    {
+      "name": "AUTO JETWAY Tablet DataRef",
+      "oldLines": [
+        "B738DR_pause_load_flt\t\t\t= find_dataref(\"laminar/b738/pause_load_flt\")",
+        "",
+        "vanish_y_status\t\t\t\t\t= find_dataref(\"laminar/b738/vanish_y_status\")"
+      ],
+      "newLines": [
+        "B738DR_pause_load_flt\t\t\t= find_dataref(\"laminar/b738/pause_load_flt\")",
+        "B738DR_auto_jetway\t\t\t\t= find_dataref(\"laminar/B738/tab/auto_jetway\")",
+        "",
+        "vanish_y_status\t\t\t\t\t= find_dataref(\"laminar/b738/vanish_y_status\")"
+      ]
+    },
+    {
+      "name": "AUTO JETWAY REALISM page display",
+      "oldLines": [
+        "\t\telse",
+        "\t\t\tline_g[5] = \"                                  YES\"",
+        "\t\t\tline_s[5] = \"                               NO    \"",
+        "\t\tend",
+        "\t\t",
+        "\t\t-- enable/disable manip",
+        "\t\tfor i = 0, 5 do",
+        "\t\t\tB738DR_tab_line_manip[i] = 1",
+        "\t\tend",
+        "\t\tfor i = 6, 9 do",
+        "\t\t\tB738DR_tab_line_manip[i] = 0",
+        "\t\tend"
+      ],
+      "newLines": [
+        "\t\telse",
+        "\t\t\tline_g[5] = \"                                  YES\"",
+        "\t\t\tline_s[5] = \"                               NO    \"",
+        "\t\tend",
+        "",
+        "\t\tline[6] = \"  AUTO JETWAY                     /\"",
+        "\t\tif B738DR_auto_jetway == 0 then",
+        "\t\t\tline_g[6] = \"                               OFF   \"",
+        "\t\t\tline_s[6] = \"                                   ON\"",
+        "\t\telse",
+        "\t\t\tline_g[6] = \"                                   ON\"",
+        "\t\t\tline_s[6] = \"                               OFF   \"",
+        "\t\tend",
+        "\t\t",
+        "\t\t-- enable/disable manip",
+        "\t\tfor i = 0, 6 do",
+        "\t\t\tB738DR_tab_line_manip[i] = 1",
+        "\t\tend",
+        "\t\tfor i = 7, 9 do",
+        "\t\t\tB738DR_tab_line_manip[i] = 0",
+        "\t\tend"
+      ]
+    },
+    {
+      "name": "AUTO JETWAY Tablet click handler",
+      "oldLines": [
+        "\t\telse",
+        "\t\t\tB738DR_pause_load_flt = 0",
+        "\t\tend",
+        "\tend",
+        "end"
+      ],
+      "newLines": [
+        "\t\telse",
+        "\t\t\tB738DR_pause_load_flt = 0",
+        "\t\tend",
+        "\telseif cmd == 15 then",
+        "\t\tif B738DR_auto_jetway == 0 then",
+        "\t\t\tB738DR_auto_jetway = 1",
+        "\t\telse",
+        "\t\t\tB738DR_auto_jetway = 0",
+        "\t\tend",
+        "\tend",
+        "end"
+      ]
+    },
+    {
+      "name": "AUTO JETWAY boarding start guard",
+      "oldLines": [
+        "\t\t\tif B738DR_jetway_nearest <= 0.05 then",
+        "\t\t\t\tB738CMD_jetways_toggle:once()"
+      ],
+      "newLines": [
+        "\t\t\tif B738DR_jetway_nearest <= 0.05 then",
+        "\t\t\t\tif B738DR_auto_jetway ~= 0 then",
+        "\t\t\t\t\tB738CMD_jetways_toggle:once()",
+        "\t\t\t\tend"
+      ]
+    },
+    {
+      "name": "AUTO JETWAY boarding completion guard",
+      "oldLines": [
+        "\t\t\t\t\t\t\tif B738DR_jetway_nearest <= 0.05 then",
+        "\t\t\t\t\t\t\t\tB738CMD_jetways_toggle:once()"
+      ],
+      "newLines": [
+        "\t\t\t\t\t\t\tif B738DR_jetway_nearest <= 0.05 then",
+        "\t\t\t\t\t\t\t\tif B738DR_auto_jetway ~= 0 then",
+        "\t\t\t\t\t\t\t\t\tB738CMD_jetways_toggle:once()",
+        "\t\t\t\t\t\t\t\tend"
+      ]
+    },
+    {
+      "name": "AUTO JETWAY post-landing guard",
+      "oldLines": [
+        "\t\t\t\tif B738DR_jetway_nearest <= 0.05 then",
+        "\t\t\t\t\tB738CMD_jetways_toggle:once()"
+      ],
+      "newLines": [
+        "\t\t\t\tif B738DR_jetway_nearest <= 0.05 then",
+        "\t\t\t\t\tif B738DR_auto_jetway ~= 0 then",
+        "\t\t\t\t\t\tB738CMD_jetways_toggle:once()",
+        "\t\t\t\t\tend"
+      ]
+    }
+  ]
+}
