@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2 - 2026-08-24
+
+- Add a backward-compatible schema-3 compatibility module for online Toolkit
+  discovery while retaining the standalone installer contract.
+- Package the same verified FMS and Tablet patch payloads under the Toolkit
+  module path without changing AUTO JETWAY behavior.
+- Make the global-config save replacement unambiguous for both the standalone
+  installer and the Toolkit's transactional patch engine.
+
 ## 0.2.1 - 2026-08-24
 
 - Accept structurally compatible shared Lua files even when unrelated patches

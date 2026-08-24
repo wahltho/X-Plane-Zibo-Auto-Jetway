@@ -65,9 +65,13 @@
     {
       "name": "AUTO JETWAY global config save",
       "oldLines": [
+        "\t\t\tfms_line = \"PAUSE LOAD FLT = \" .. string.format(\"%2d\", B738DR_pause_load_flt) .. \"\\n\"",
+        "\t\t\tfile_navdata:write(fms_line)",
         "\t\t\tfms_line = \"VANISH_Y       = \" .. string.format(\"%3d\", B738DR_vanish_y) .. \"\\n\""
       ],
       "newLines": [
+        "\t\t\tfms_line = \"PAUSE LOAD FLT = \" .. string.format(\"%2d\", B738DR_pause_load_flt) .. \"\\n\"",
+        "\t\t\tfile_navdata:write(fms_line)",
         "\t\t\tif xfile_path_cfg == \"\" then",
         "\t\t\t\tfms_line = \"AUTO JETWAY    = \" .. string.format(\"%2d\", B738DR_auto_jetway) .. \"\\n\"",
         "\t\t\t\tfile_navdata:write(fms_line)",

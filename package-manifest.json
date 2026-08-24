@@ -3,13 +3,15 @@
     "Zibo B737-800X for X-Plane 12",
     "LevelUp 737NG Series for X-Plane 12"
   ],
+  "aircraftFamily": "Zibo and LevelUp 737NG aircraft",
   "packageId": "wahltho.zibo-40535.auto-jetway",
-  "packageVersion": "0.2.1",
+  "packageType": "compatibilityPackage",
+  "packageVersion": "0.2.2",
   "payloads": [
     {
       "path": "patches/B738.a_fms.lua.json",
-      "sha256": "6d14898b3765068f53aadb070e707e6b4891371b677e92af11556ef90acf0842",
-      "size": 2967
+      "sha256": "3c9ef094e660571892f12fe539bc23da7dab74a761675ca9be2ed7b625b6b540",
+      "size": 3279
     },
     {
       "path": "patches/B738.tablet.lua.json",
@@ -20,6 +22,49 @@
   "repositoryUrl": "https://github.com/wahltho/X-Plane-Zibo-Auto-Jetway",
   "restartRequired": true,
   "schemaVersion": 3,
+  "supportedProducts": [
+    "zibo-737ng",
+    "levelup-737ng"
+  ],
+  "supportedUpstreamReleases": [],
+  "modules": [
+    {
+      "moduleId": "auto-jetway",
+      "displayName": "AUTO JETWAY",
+      "description": "Persistent AUTO JETWAY ON/OFF option with guarded automatic jetway calls.",
+      "policy": "optional",
+      "defaultEnabled": false,
+      "installationOrder": 50,
+      "requires": [],
+      "conflictsWith": [],
+      "payloads": [
+        {
+          "path": "patches/B738.a_fms.lua.json",
+          "sha256": "3c9ef094e660571892f12fe539bc23da7dab74a761675ca9be2ed7b625b6b540",
+          "size": 3279
+        },
+        {
+          "path": "patches/B738.tablet.lua.json",
+          "sha256": "4bf2298e8c36376f5333df1e4ad16494cadb0af2536ca237b6d6daa072a3e595",
+          "size": 3870
+        }
+      ],
+      "targets": [
+        {
+          "operation": "exact-text-replacements-v1",
+          "payload": "patches/B738.a_fms.lua.json",
+          "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
+          "sourceSha256": []
+        },
+        {
+          "operation": "exact-text-replacements-v1",
+          "payload": "patches/B738.tablet.lua.json",
+          "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
+          "sourceSha256": []
+        }
+      ]
+    }
+  ],
   "scope": {
     "included": [
       "persistent AUTO JETWAY ON/OFF option on REALISM SETTINGS page 2",

@@ -24,6 +24,11 @@ PACKAGE_FILES = (
     "patches/B738.tablet.lua.json",
     "z_Install.py",
 )
+MODULE_ID = "auto-jetway"
+MODULE_PAYLOADS = (
+    "patches/B738.a_fms.lua.json",
+    "patches/B738.tablet.lua.json",
+)
 
 
 def main() -> int:
@@ -42,6 +47,15 @@ def main() -> int:
             if not source.is_file():
                 raise FileNotFoundError(relative)
             info = zipfile.ZipInfo(f"X-Plane-Zibo-Auto-Jetway-v{version}/{relative}", timestamp)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o100644 << 16
+            bundle.writestr(info, source.read_bytes())
+        for relative in MODULE_PAYLOADS:
+            source = REPOSITORY_ROOT / relative
+            info = zipfile.ZipInfo(
+                f"X-Plane-Zibo-Auto-Jetway-v{version}/modules/{MODULE_ID}/{relative}",
+                timestamp,
+            )
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
             bundle.writestr(info, source.read_bytes())

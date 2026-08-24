@@ -16,6 +16,12 @@ class PackageContractTests(unittest.TestCase):
             (REPOSITORY_ROOT / "package-manifest.json").read_text(encoding="utf-8")
         )
         self.assertEqual(3, manifest["schemaVersion"])
+        self.assertEqual("compatibilityPackage", manifest["packageType"])
+        self.assertEqual("0.2.2", manifest["packageVersion"])
+        self.assertEqual(
+            ["zibo-737ng", "levelup-737ng"],
+            manifest["supportedProducts"],
+        )
         payloads = {item["path"]: item for item in manifest["payloads"]}
         targets = manifest["targets"]
         self.assertEqual(set(payloads), {target["payload"] for target in targets})
@@ -43,6 +49,17 @@ class PackageContractTests(unittest.TestCase):
             self.assertTrue(path.is_file())
             self.assertEqual(metadata["size"], path.stat().st_size)
             self.assertEqual(metadata["sha256"], sha256_path(path))
+
+        self.assertEqual(1, len(manifest["modules"]))
+        module = manifest["modules"][0]
+        self.assertEqual("auto-jetway", module["moduleId"])
+        self.assertEqual("optional", module["policy"])
+        self.assertFalse(module["defaultEnabled"])
+        self.assertEqual(payloads, {item["path"]: item for item in module["payloads"]})
+        self.assertEqual(targets, [
+            {key: value for key, value in target.items() if key != "sourceSha256"}
+            for target in module["targets"]
+        ])
 
     def test_repository_does_not_ship_complete_aircraft_targets(self) -> None:
         forbidden = {

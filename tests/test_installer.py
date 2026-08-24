@@ -161,7 +161,7 @@ class InstallerIntegrationTests(unittest.TestCase):
                     )
                 )
                 self.assertEqual("wahltho.zibo-40535.auto-jetway", state["packageId"])
-                self.assertEqual("0.2.1", state["packageVersion"])
+                self.assertEqual("0.2.2", state["packageVersion"])
                 self.assertEqual(identifier, state["baselineId"])
                 self.assertEqual(2, len(state["files"]))
 
