@@ -19,6 +19,17 @@ TARGETS = (
     "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
     "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
 )
+BASELINES = (
+    ("zibo-4.05.35", "ZIBO_40535_ROOT", "B737-800X", "\r\n", "\n"),
+    ("levelup-v2.s1", "LEVELUP_V2S1_ROOT", "LevelUp V2.S1", "\r\n", "\n"),
+    (
+        "levelup-v2.s1.50",
+        "LEVELUP_V2S150_ROOT",
+        "LevelUp V2.S1.50",
+        "\r\n",
+        "\r\n",
+    ),
+)
 
 
 def sha256(path: Path) -> str:
@@ -60,34 +71,40 @@ class TextPatchUnitTests(unittest.TestCase):
 class InstallerIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        upstream = os.environ.get("ZIBO_40535_ROOT")
-        if not upstream:
-            raise unittest.SkipTest("Set ZIBO_40535_ROOT for integration tests")
-        cls.upstream = Path(upstream)
+        missing = [
+            environment
+            for _, environment, _, _, _ in BASELINES
+            if not os.environ.get(environment)
+        ]
+        if missing:
+            raise unittest.SkipTest(
+                "Set all integration baseline roots: " + ", ".join(missing)
+            )
+        cls.baselines = [
+            (identifier, Path(os.environ[environment]), name, fms_eol, tablet_eol)
+            for identifier, environment, name, fms_eol, tablet_eol in BASELINES
+        ]
 
-    def setUp(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory(prefix="zibo-auto-jetway-test-")
-        self.aircraft_root = Path(self.temporary.name) / "B737-800X"
+    def copy_baseline(self, upstream: Path, aircraft_root: Path) -> dict[str, str]:
         for relative in TARGETS:
-            source = self.upstream / relative
-            destination = self.aircraft_root / relative
+            source = upstream / relative
+            destination = aircraft_root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
-        self.original_hashes = {
-            relative: sha256(self.aircraft_root / relative) for relative in TARGETS
+        return {
+            relative: sha256(aircraft_root / relative) for relative in TARGETS
         }
 
-    def tearDown(self) -> None:
-        self.temporary.cleanup()
-
-    def run_installer(self, action: str, expected: int = 0) -> subprocess.CompletedProcess[str]:
+    def run_installer(
+        self, aircraft_root: Path, action: str, expected: int = 0
+    ) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
             [
                 sys.executable,
                 str(INSTALLER),
                 action,
                 "--aircraft-root",
-                str(self.aircraft_root),
+                str(aircraft_root),
             ],
             cwd=REPOSITORY_ROOT,
             text=True,
@@ -98,78 +115,163 @@ class InstallerIntegrationTests(unittest.TestCase):
         return result
 
     def test_check_install_verify_and_uninstall(self) -> None:
-        self.run_installer("check")
-        self.assertEqual(
-            self.original_hashes,
-            {relative: sha256(self.aircraft_root / relative) for relative in TARGETS},
-        )
+        for identifier, upstream, name, fms_eol, tablet_eol in self.baselines:
+            with self.subTest(baseline=identifier), tempfile.TemporaryDirectory(
+                prefix="auto-jetway-test-"
+            ) as temporary:
+                aircraft_root = Path(temporary) / name
+                original_hashes = self.copy_baseline(upstream, aircraft_root)
 
-        self.run_installer("install")
-        self.run_installer("verify")
-        self.run_installer("install")
+                check = self.run_installer(aircraft_root, "check")
+                self.assertIn(f"Detected baseline: {identifier}", check.stdout)
+                self.assertEqual(
+                    original_hashes,
+                    {relative: sha256(aircraft_root / relative) for relative in TARGETS},
+                )
 
-        state = json.loads(
-            (self.aircraft_root / ".zibo-auto-jetway-patch/state.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        self.assertEqual("wahltho.zibo-40535.auto-jetway", state["packageId"])
-        self.assertEqual("0.1.0", state["packageVersion"])
-        self.assertEqual(2, len(state["files"]))
+                self.run_installer(aircraft_root, "install")
+                self.run_installer(aircraft_root, "verify")
+                self.run_installer(aircraft_root, "install")
 
-        fms_bytes = (self.aircraft_root / TARGETS[0]).read_bytes()
-        tablet_bytes = (self.aircraft_root / TARGETS[1]).read_bytes()
-        fms = fms_bytes.decode("utf-8")
-        tablet = tablet_bytes.decode("utf-8")
+                state = json.loads(
+                    (aircraft_root / ".zibo-auto-jetway-patch/state.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                self.assertEqual("wahltho.zibo-40535.auto-jetway", state["packageId"])
+                self.assertEqual("0.2.0", state["packageVersion"])
+                self.assertEqual(identifier, state["baselineId"])
+                self.assertEqual(2, len(state["files"]))
 
-        self.assertEqual(fms_bytes.count(b"\n"), fms_bytes.count(b"\r\n"))
-        self.assertEqual(0, tablet_bytes.count(b"\r\n"))
-        self.assertEqual(1, fms.count('create_dataref("laminar/B738/tab/auto_jetway"'))
-        self.assertIn('fms_txt == "AUTO JETWAY" and xfile_path_cfg == ""', fms)
-        self.assertIn(
-            'if xfile_path_cfg == "" then\r\n\t\t\t\tfms_line = "AUTO JETWAY',
-            fms,
-        )
-        self.assertEqual(1, tablet.count('find_dataref("laminar/B738/tab/auto_jetway"'))
-        self.assertEqual(3, tablet.count("B738CMD_jetways_toggle:once()"))
-        self.assertEqual(3, tablet.count("if B738DR_auto_jetway ~= 0 then"))
-        self.assertEqual(1, tablet.count('find_command("sim/ground_ops/jetway")'))
-        self.assertNotIn('create_command("sim/ground_ops/jetway"', tablet)
+                fms_bytes = (aircraft_root / TARGETS[0]).read_bytes()
+                tablet_bytes = (aircraft_root / TARGETS[1]).read_bytes()
+                fms = fms_bytes.decode("utf-8")
+                tablet = tablet_bytes.decode("utf-8")
 
-        luac = shutil.which("luac")
-        if luac:
-            syntax = subprocess.run(
-                [luac, "-p", str(self.aircraft_root / TARGETS[0]), str(self.aircraft_root / TARGETS[1])],
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(0, syntax.returncode, msg=syntax.stdout + syntax.stderr)
+                for data, expected_eol in (
+                    (fms_bytes, fms_eol),
+                    (tablet_bytes, tablet_eol),
+                ):
+                    if expected_eol == "\r\n":
+                        self.assertEqual(data.count(b"\n"), data.count(b"\r\n"))
+                    else:
+                        self.assertEqual(0, data.count(b"\r\n"))
+                self.assertEqual(
+                    1, fms.count('create_dataref("laminar/B738/tab/auto_jetway"')
+                )
+                self.assertIn('fms_txt == "AUTO JETWAY" and xfile_path_cfg == ""', fms)
+                self.assertIn(
+                    f'if xfile_path_cfg == "" then{fms_eol}'
+                    '\t\t\t\tfms_line = "AUTO JETWAY',
+                    fms,
+                )
+                self.assertEqual(
+                    1, tablet.count('find_dataref("laminar/B738/tab/auto_jetway"')
+                )
+                self.assertEqual(3, tablet.count("B738CMD_jetways_toggle:once()"))
+                self.assertEqual(3, tablet.count("if B738DR_auto_jetway ~= 0 then"))
+                self.assertEqual(1, tablet.count('find_command("sim/ground_ops/jetway")'))
+                self.assertNotIn('create_command("sim/ground_ops/jetway"', tablet)
 
-        installed_tablet = (self.aircraft_root / TARGETS[1]).read_bytes()
-        (self.aircraft_root / TARGETS[1]).write_bytes(installed_tablet + b"-- later change\n")
-        refused = self.run_installer("uninstall", expected=1)
-        self.assertIn("Installed file was changed after installation", refused.stderr)
-        (self.aircraft_root / TARGETS[1]).write_bytes(installed_tablet)
+                luac = shutil.which("luac")
+                if luac:
+                    syntax = subprocess.run(
+                        [
+                            luac,
+                            "-p",
+                            str(aircraft_root / TARGETS[0]),
+                            str(aircraft_root / TARGETS[1]),
+                        ],
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    self.assertEqual(0, syntax.returncode, msg=syntax.stdout + syntax.stderr)
 
-        self.run_installer("uninstall")
-        self.assertEqual(
-            self.original_hashes,
-            {relative: sha256(self.aircraft_root / relative) for relative in TARGETS},
-        )
-        self.assertFalse((self.aircraft_root / ".zibo-auto-jetway-patch").exists())
-        self.run_installer("check")
+                installed_tablet = (aircraft_root / TARGETS[1]).read_bytes()
+                (aircraft_root / TARGETS[1]).write_bytes(
+                    installed_tablet + b"-- later change\n"
+                )
+                refused = self.run_installer(aircraft_root, "uninstall", expected=1)
+                self.assertIn("Installed file was changed after installation", refused.stderr)
+                (aircraft_root / TARGETS[1]).write_bytes(installed_tablet)
+
+                self.run_installer(aircraft_root, "uninstall")
+                self.assertEqual(
+                    original_hashes,
+                    {relative: sha256(aircraft_root / relative) for relative in TARGETS},
+                )
+                self.assertFalse((aircraft_root / ".zibo-auto-jetway-patch").exists())
+                self.run_installer(aircraft_root, "check")
 
     def test_modified_source_is_rejected_without_writes(self) -> None:
-        tablet = self.aircraft_root / TARGETS[1]
-        tablet.write_bytes(tablet.read_bytes() + b"-- local modification\n")
-        before = {relative: sha256(self.aircraft_root / relative) for relative in TARGETS}
-        result = self.run_installer("check", expected=1)
-        self.assertIn("Unsupported or modified source file", result.stderr)
-        self.assertEqual(
-            before,
-            {relative: sha256(self.aircraft_root / relative) for relative in TARGETS},
-        )
+        for identifier, upstream, name, _, _ in self.baselines:
+            with self.subTest(baseline=identifier), tempfile.TemporaryDirectory(
+                prefix="auto-jetway-modified-"
+            ) as temporary:
+                aircraft_root = Path(temporary) / name
+                self.copy_baseline(upstream, aircraft_root)
+                tablet = aircraft_root / TARGETS[1]
+                tablet.write_bytes(tablet.read_bytes() + b"-- local modification\n")
+                before = {
+                    relative: sha256(aircraft_root / relative) for relative in TARGETS
+                }
+                result = self.run_installer(aircraft_root, "check", expected=1)
+                self.assertIn(
+                    "Unsupported, modified or mixed aircraft source files",
+                    result.stderr,
+                )
+                self.assertEqual(
+                    before,
+                    {relative: sha256(aircraft_root / relative) for relative in TARGETS},
+                )
+
+    def test_mixed_levelup_baseline_pair_is_rejected(self) -> None:
+        levelup_s1 = self.baselines[1][1]
+        levelup_s150 = self.baselines[2][1]
+        with tempfile.TemporaryDirectory(prefix="auto-jetway-mixed-") as temporary:
+            aircraft_root = Path(temporary) / "Mixed LevelUp"
+            for relative, upstream in zip(TARGETS, (levelup_s1, levelup_s150)):
+                destination = aircraft_root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(upstream / relative, destination)
+            before = {relative: sha256(aircraft_root / relative) for relative in TARGETS}
+            result = self.run_installer(aircraft_root, "check", expected=1)
+            self.assertIn(
+                "Unsupported, modified or mixed aircraft source files",
+                result.stderr,
+            )
+            self.assertEqual(
+                before,
+                {relative: sha256(aircraft_root / relative) for relative in TARGETS},
+            )
+
+    def test_v010_zibo_state_remains_verifiable_and_uninstallable(self) -> None:
+        identifier, upstream, name, _, _ = self.baselines[0]
+        with tempfile.TemporaryDirectory(prefix="auto-jetway-v010-") as temporary:
+            aircraft_root = Path(temporary) / name
+            original_hashes = self.copy_baseline(upstream, aircraft_root)
+            self.run_installer(aircraft_root, "install")
+
+            state_path = aircraft_root / ".zibo-auto-jetway-patch/state.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(identifier, state.pop("baselineId"))
+            state.pop("aircraftFamily")
+            state.pop("aircraftRelease")
+            state["packageVersion"] = "0.1.0"
+            state_path.write_text(
+                json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
+
+            verify = self.run_installer(aircraft_root, "verify")
+            self.assertIn("0.1.0", verify.stdout)
+            reinstall = self.run_installer(aircraft_root, "install")
+            self.assertIn("Already installed and verified", reinstall.stdout)
+            self.run_installer(aircraft_root, "uninstall")
+            self.assertEqual(
+                original_hashes,
+                {relative: sha256(aircraft_root / relative) for relative in TARGETS},
+            )
 
 
 if __name__ == "__main__":

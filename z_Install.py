@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install and manage the Zibo 4.05.35 AUTO JETWAY patch."""
+"""Install and manage the Zibo/LevelUp AUTO JETWAY patch."""
 
 from __future__ import annotations
 
@@ -32,11 +32,51 @@ def _safe_relative_path(value: str) -> Path:
 
 def _load_manifest() -> dict[str, Any]:
     manifest = load_json(MANIFEST_PATH)
-    if manifest.get("schemaVersion") != 2:
+    if manifest.get("schemaVersion") != 3:
         raise PatchError("Unsupported package manifest schema")
     if manifest.get("packageId") != "wahltho.zibo-40535.auto-jetway":
         raise PatchError("Unexpected package identity")
+    _validate_baselines(manifest)
     return manifest
+
+
+def _baseline_file_map(baseline: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    files = baseline.get("files", [])
+    result = {item["relativePath"]: item for item in files}
+    if len(result) != len(files):
+        raise PatchError(f"Duplicate file in baseline: {baseline.get('id', '<unknown>')}")
+    return result
+
+
+def _validate_baselines(manifest: dict[str, Any]) -> None:
+    target_paths = {target["relativePath"] for target in manifest.get("targets", [])}
+    baselines = manifest.get("supportedBaselines", [])
+    if not target_paths or not baselines:
+        raise PatchError("Manifest contains no targets or supported baselines")
+    identifiers = [baseline.get("id") for baseline in baselines]
+    if any(not value for value in identifiers) or len(set(identifiers)) != len(identifiers):
+        raise PatchError("Supported baseline identifiers are missing or duplicated")
+
+    fingerprints: set[tuple[tuple[str, str], ...]] = set()
+    for baseline in baselines:
+        files = _baseline_file_map(baseline)
+        if set(files) != target_paths:
+            raise PatchError(
+                f"Baseline target closure mismatch: {baseline['id']}"
+            )
+        fingerprint = tuple(
+            sorted((relative, metadata["sourceSha256"]) for relative, metadata in files.items())
+        )
+        if fingerprint in fingerprints:
+            raise PatchError(f"Duplicate source fingerprint: {baseline['id']}")
+        fingerprints.add(fingerprint)
+        for relative, metadata in files.items():
+            for field in ("sourceSha256", "resultSha256"):
+                value = metadata.get(field)
+                if not isinstance(value, str) or len(value) != 64:
+                    raise PatchError(
+                        f"Invalid {field} for {baseline['id']}: {relative}"
+                    )
 
 
 def _validate_payloads(manifest: dict[str, Any]) -> None:
@@ -65,34 +105,50 @@ def _target_path(aircraft_root: Path, target: dict[str, Any]) -> Path:
     return aircraft_root / _safe_relative_path(target["relativePath"])
 
 
-def _preflight_sources(aircraft_root: Path, manifest: dict[str, Any]) -> None:
+def _detect_baseline(aircraft_root: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    actual: dict[str, str] = {}
     for target in manifest["targets"]:
         path = _target_path(aircraft_root, target)
         if not path.is_file():
-            raise PatchError(f"Required Zibo file is missing: {target['relativePath']}")
-        actual = sha256_path(path)
-        supported = target.get("sourceSha256", [])
-        if actual not in supported:
-            raise PatchError(
-                f"Unsupported or modified source file: {target['relativePath']}\n"
-                f"  actual: {actual}\n"
-                f"  supported: {', '.join(supported)}"
-            )
+            raise PatchError(f"Required aircraft file is missing: {target['relativePath']}")
+        actual[target["relativePath"]] = sha256_path(path)
+
+    matches = []
+    for baseline in manifest["supportedBaselines"]:
+        files = _baseline_file_map(baseline)
+        if all(actual[relative] == metadata["sourceSha256"] for relative, metadata in files.items()):
+            matches.append(baseline)
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise PatchError("Source files ambiguously match multiple supported baselines")
+
+    details = "\n".join(f"  {relative}: {digest}" for relative, digest in sorted(actual.items()))
+    supported = ", ".join(baseline["id"] for baseline in manifest["supportedBaselines"])
+    raise PatchError(
+        "Unsupported, modified or mixed aircraft source files:\n"
+        f"{details}\n"
+        f"  supported baseline sets: {supported}"
+    )
 
 
-def _transform_targets(aircraft_root: Path, manifest: dict[str, Any]) -> dict[str, bytes]:
+def _transform_targets(
+    aircraft_root: Path, manifest: dict[str, Any], baseline: dict[str, Any]
+) -> dict[str, bytes]:
     transformed: dict[str, bytes] = {}
+    baseline_files = _baseline_file_map(baseline)
     for target in manifest["targets"]:
         relative = target["relativePath"]
         source = _target_path(aircraft_root, target).read_bytes()
         payload = load_json(PACKAGE_ROOT / _safe_relative_path(target["payload"]))
         result = apply_operation(source, target["operation"], payload)
         actual = sha256_bytes(result)
-        if actual != target["resultSha256"]:
+        expected = baseline_files[relative]["resultSha256"]
+        if actual != expected:
             raise PatchError(
-                f"Generated result hash mismatch for {relative}\n"
+                f"Generated result hash mismatch for {baseline['id']}: {relative}\n"
                 f"  actual: {actual}\n"
-                f"  expected: {target['resultSha256']}"
+                f"  expected: {expected}"
             )
         transformed[relative] = result
     return transformed
@@ -129,9 +185,13 @@ def command_check(aircraft_root: Path, manifest: dict[str, Any]) -> int:
         print(f"Installed and verified: {state['packageId']} {state['packageVersion']}")
         return 0
     _validate_payloads(manifest)
-    _preflight_sources(aircraft_root, manifest)
-    _transform_targets(aircraft_root, manifest)
+    baseline = _detect_baseline(aircraft_root, manifest)
+    _transform_targets(aircraft_root, manifest, baseline)
     print(f"Ready to install {manifest['packageId']} {manifest['packageVersion']}")
+    print(
+        f"Detected baseline: {baseline['id']} "
+        f"({baseline['aircraftFamily']} {baseline['release']})"
+    )
     print(f"Validated {len(manifest['targets'])} source files; no files were changed.")
     return 0
 
@@ -144,8 +204,8 @@ def command_install(aircraft_root: Path, manifest: dict[str, Any]) -> int:
         return 0
 
     _validate_payloads(manifest)
-    _preflight_sources(aircraft_root, manifest)
-    transformed = _transform_targets(aircraft_root, manifest)
+    baseline = _detect_baseline(aircraft_root, manifest)
+    transformed = _transform_targets(aircraft_root, manifest, baseline)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     state_root = aircraft_root / STATE_DIRECTORY
     backup_root = state_root / "backups" / timestamp
@@ -187,6 +247,9 @@ def command_install(aircraft_root: Path, manifest: dict[str, Any]) -> int:
             "packageId": manifest["packageId"],
             "packageVersion": manifest["packageVersion"],
             "manifestSha256": sha256_path(MANIFEST_PATH),
+            "baselineId": baseline["id"],
+            "aircraftFamily": baseline["aircraftFamily"],
+            "aircraftRelease": baseline["release"],
             "installedAtUtc": datetime.now(timezone.utc).isoformat(),
             "backupRelativePath": backup_root.relative_to(aircraft_root).as_posix(),
             "files": state_files,

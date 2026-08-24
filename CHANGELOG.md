@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 - 2026-08-24
+
+- Add exact baseline support for LevelUp 737NG Series V2.S1 and V2.S1.50.
+- Upgrade the manifest to schema 3 with paired FMS/Tablet baseline detection.
+- Reject mixed Zibo/LevelUp or mixed LevelUp-version source file sets.
+- Extend installer, uninstall, line-ending and Lua-syntax tests across all
+  three supported baselines.
+- Preserve verify and uninstall compatibility with existing v0.1.0 Zibo
+  installation state.
+
 ## 0.1.0 - 2026-08-23
 
 - Add a persistent `AUTO JETWAY: ON / OFF` Tablet option.

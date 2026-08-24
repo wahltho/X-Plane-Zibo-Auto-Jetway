@@ -15,11 +15,29 @@ class PackageContractTests(unittest.TestCase):
         manifest = json.loads(
             (REPOSITORY_ROOT / "package-manifest.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(2, manifest["schemaVersion"])
+        self.assertEqual(3, manifest["schemaVersion"])
         payloads = {item["path"]: item for item in manifest["payloads"]}
         targets = manifest["targets"]
         self.assertEqual(set(payloads), {target["payload"] for target in targets})
         self.assertEqual(2, len(targets))
+        target_paths = {target["relativePath"] for target in targets}
+        baselines = manifest["supportedBaselines"]
+        self.assertEqual(
+            {"zibo-4.05.35", "levelup-v2.s1", "levelup-v2.s1.50"},
+            {baseline["id"] for baseline in baselines},
+        )
+        fingerprints = set()
+        for baseline in baselines:
+            files = {item["relativePath"]: item for item in baseline["files"]}
+            self.assertEqual(target_paths, set(files))
+            fingerprint = tuple(
+                sorted((relative, item["sourceSha256"]) for relative, item in files.items())
+            )
+            self.assertNotIn(fingerprint, fingerprints)
+            fingerprints.add(fingerprint)
+            for item in files.values():
+                self.assertEqual(64, len(item["sourceSha256"]))
+                self.assertEqual(64, len(item["resultSha256"]))
         for relative, metadata in payloads.items():
             path = REPOSITORY_ROOT / relative
             self.assertTrue(path.is_file())

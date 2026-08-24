@@ -1,7 +1,8 @@
 # Runtime acceptance plan
 
-Use a disposable stock Zibo 4.05.35 installation. Record the active config and
-verify the native command separately from the automatic lifecycle.
+Run the matrix independently on disposable stock Zibo 4.05.35, LevelUp V2.S1
+and LevelUp V2.S1.50 installations. Record the active config and verify the
+native command separately from the automatic lifecycle.
 
 ## Persistence
 

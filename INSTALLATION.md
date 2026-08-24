@@ -2,7 +2,8 @@
 
 ## Requirements
 
-- An unmodified stock Zibo 4.05.35 installation.
+- An unmodified supported installation: Zibo 4.05.35, LevelUp V2.S1 or
+  LevelUp V2.S1.50.
 - Python 3.10 or newer.
 - X-Plane closed while files are changed.
 - A separate recoverable aircraft backup.
@@ -12,17 +13,17 @@
 From this repository, run:
 
 ```bash
-python3 z_Install.py check --aircraft-root "/path/to/B737-800X"
+python3 z_Install.py check --aircraft-root "/path/to/aircraft-root"
 ```
 
-`check` verifies the manifest, payloads, source hashes and generated result
-hashes without changing the aircraft. A failure means the target is missing,
-modified or not the supported release.
+`check` verifies the manifest, payloads, paired FMS/Tablet baseline and
+generated result hashes without changing the aircraft. A failure means the
+target is missing, modified, mixed between releases or unsupported.
 
 ## Install
 
 ```bash
-python3 z_Install.py install --aircraft-root "/path/to/B737-800X"
+python3 z_Install.py install --aircraft-root "/path/to/aircraft-root"
 ```
 
 The installer backs up both complete original Lua files, stages both patched
@@ -41,7 +42,7 @@ the missing key resolves to `ON`.
 ## Verify
 
 ```bash
-python3 z_Install.py verify --aircraft-root "/path/to/B737-800X"
+python3 z_Install.py verify --aircraft-root "/path/to/aircraft-root"
 ```
 
 ## Uninstall
@@ -49,12 +50,17 @@ python3 z_Install.py verify --aircraft-root "/path/to/B737-800X"
 Close X-Plane and run:
 
 ```bash
-python3 z_Install.py uninstall --aircraft-root "/path/to/B737-800X"
+python3 z_Install.py uninstall --aircraft-root "/path/to/aircraft-root"
 ```
 
 Uninstall first verifies that the installed Lua files still match the recorded
-installed hashes. This prevents silently overwriting later Zibo updates or
-manual edits. Successful uninstall restores both original files byte-for-byte.
+installed hashes. This prevents silently overwriting later Zibo/LevelUp
+updates or manual edits. Successful uninstall restores both original files
+byte-for-byte.
 
 An `AUTO JETWAY` line left in an existing config file is harmless because an
 unpatched upstream version ignores unknown keys.
+
+Existing v0.1.0 Zibo installations use the same package ID and state directory.
+They remain verifiable and uninstallable with this installer; no feature
+reinstall is required.

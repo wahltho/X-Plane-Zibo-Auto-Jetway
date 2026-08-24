@@ -1,7 +1,10 @@
 {
-  "aircraftFamily": "Zibo B737-800X for X-Plane 12",
+  "aircraftFamilies": [
+    "Zibo B737-800X for X-Plane 12",
+    "LevelUp 737NG Series for X-Plane 12"
+  ],
   "packageId": "wahltho.zibo-40535.auto-jetway",
-  "packageVersion": "0.1.0",
+  "packageVersion": "0.2.0",
   "payloads": [
     {
       "path": "patches/B738.a_fms.lua.json",
@@ -16,13 +19,14 @@
   ],
   "repositoryUrl": "https://github.com/wahltho/X-Plane-Zibo-Auto-Jetway",
   "restartRequired": true,
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "scope": {
     "included": [
       "persistent AUTO JETWAY ON/OFF option on REALISM SETTINGS page 2",
       "compatibility default ON for missing, old or invalid config values",
       "global variant configuration ownership without livery override",
-      "guards around all three stock automatic sim/ground_ops/jetway callsites"
+      "guards around all three stock automatic sim/ground_ops/jetway callsites",
+      "paired baseline detection for Zibo and LevelUp FMS and Tablet files"
     ],
     "notIncluded": [
       "interception or replacement of the native X-Plane jetway command",
@@ -31,27 +35,69 @@
       "changes to zibomod.xpl"
     ]
   },
-  "supportedUpstreamReleases": [
-    "Zibo 4.05.35"
+  "supportedBaselines": [
+    {
+      "aircraftFamily": "Zibo B737-800X",
+      "files": [
+        {
+          "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
+          "resultSha256": "d603ccd5e8ca9ad52972112f1f34ff3843f22a1173ba515eacfbd61e77ae211f",
+          "sourceSha256": "e2e427adffb030a3b7c8dc02a1adb971417be61bd22aa67a18e08f14d9d9390a"
+        },
+        {
+          "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
+          "resultSha256": "397eaa6babefe43031a7b16626678b691fc3a5cf150617ffd7642f882d6aec95",
+          "sourceSha256": "89598db3a999bade26faf960ad5c76f2d15bb08e7b1f8106a597e2998a2e8c72"
+        }
+      ],
+      "id": "zibo-4.05.35",
+      "release": "4.05.35"
+    },
+    {
+      "aircraftFamily": "LevelUp 737NG Series",
+      "files": [
+        {
+          "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
+          "resultSha256": "2474610fecbac8e05c580a95c9880ba090d770a49167dd6708c96d0e2c7b0096",
+          "sourceSha256": "43916b6288d397854a24ce59745967f50d13e6d183f51137364463d0f398f582"
+        },
+        {
+          "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
+          "resultSha256": "397eaa6babefe43031a7b16626678b691fc3a5cf150617ffd7642f882d6aec95",
+          "sourceSha256": "89598db3a999bade26faf960ad5c76f2d15bb08e7b1f8106a597e2998a2e8c72"
+        }
+      ],
+      "id": "levelup-v2.s1",
+      "release": "V2.S1"
+    },
+    {
+      "aircraftFamily": "LevelUp 737NG Series",
+      "files": [
+        {
+          "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
+          "resultSha256": "99d981f0b7824140b35b2334cbfc303d1e8ce3b62eed3b63b3f6575c05e1be42",
+          "sourceSha256": "757057120c2953a9cdefbfebcd593bdb4fd9636721328fb1ce6d6550f8f49384"
+        },
+        {
+          "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
+          "resultSha256": "ed6e7cef41808cf43a71b8eb91214b3887cd980b07a5e374e595374a46b66a3b",
+          "sourceSha256": "0cad13f73440f5045d8916c94600a5333d22bef6d71495ffab6872eb0feae730"
+        }
+      ],
+      "id": "levelup-v2.s1.50",
+      "release": "V2.S1.50"
+    }
   ],
   "targets": [
     {
       "operation": "exact-text-replacements-v1",
       "payload": "patches/B738.a_fms.lua.json",
-      "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
-      "resultSha256": "d603ccd5e8ca9ad52972112f1f34ff3843f22a1173ba515eacfbd61e77ae211f",
-      "sourceSha256": [
-        "e2e427adffb030a3b7c8dc02a1adb971417be61bd22aa67a18e08f14d9d9390a"
-      ]
+      "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua"
     },
     {
       "operation": "exact-text-replacements-v1",
       "payload": "patches/B738.tablet.lua.json",
-      "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
-      "resultSha256": "397eaa6babefe43031a7b16626678b691fc3a5cf150617ffd7642f882d6aec95",
-      "sourceSha256": [
-        "89598db3a999bade26faf960ad5c76f2d15bb08e7b1f8106a597e2998a2e8c72"
-      ]
+      "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua"
     }
   ]
 }
