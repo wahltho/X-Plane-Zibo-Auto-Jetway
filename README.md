@@ -31,12 +31,13 @@ The option is independent of the existing aircraft `AIRSTAIRS` setting.
 - Stock Zibo 4.05.35 Lua files for X-Plane 12.
 - Stock LevelUp 737NG Series V2.S1 Lua files for X-Plane 12.
 - Stock LevelUp 737NG Series V2.S1.50 Lua files for X-Plane 12.
-- Exact supported source hashes are declared in `package-manifest.json` and
-  documented in `SOURCE.md`.
+- Known source hashes are declared in `package-manifest.json` and documented in
+  `SOURCE.md` for release identification.
 
-The installer identifies the FMS and Tablet files as one baseline pair. It
-intentionally refuses unsupported, locally modified or mixed-version source
-files. Do not force installation after a Zibo or LevelUp update.
+The installer reports a known FMS/Tablet baseline pair when the hashes match.
+For locally modified or newer files, it instead validates every owned source
+or installed block structurally. Missing, duplicated or modified owned blocks
+remain a hard error; unrelated patch blocks do not prevent installation.
 
 ## Install
 
@@ -58,13 +59,13 @@ python3 z_Install.py verify --aircraft-root "/path/to/aircraft-root"
 python3 z_Install.py uninstall --aircraft-root "/path/to/aircraft-root"
 ```
 
-Installation creates complete backups under
-`.zibo-auto-jetway-patch/backups/` inside the selected aircraft root. An
-uninstall is refused if either installed target was subsequently modified.
+Installation creates exact audit backups under `.zibo-auto-jetway-patch/backups/`
+inside the selected aircraft root. Uninstall reverses only AUTO JETWAY-owned
+blocks and preserves unrelated changes made before or after installation.
 
 The historical package ID and state-directory name are intentionally retained
 so an existing v0.1.0 Zibo installation remains verifiable and safely
-uninstallable with v0.2.0. The AUTO JETWAY source transformation itself is
+uninstallable with v0.2.1. The AUTO JETWAY source transformation itself is
 unchanged for that Zibo baseline, so reinstalling the feature is unnecessary.
 
 See `INSTALLATION.md` for the complete procedure and `RUNTIME_TEST_PLAN.md`
@@ -73,20 +74,19 @@ for the requested simulator acceptance tests.
 ## Package contract
 
 `package-manifest.json` uses schema version 3 and declares every target,
-payload hash and complete supported source/result baseline pair. The only
-operation is an exact UTF-8 text replacement that preserves each source file's
-original line endings and final-newline convention.
+payload hash and known source/result baseline pairs. The only operation is an
+exact UTF-8 text replacement with an exact inverse that preserves each source
+file's original line endings and final-newline convention.
 
 This small declarative operation set is suitable for later integration into a
 manifest-driven aircraft maintenance tool.
 
 ## Validation status
 
-The patch has passed source-hash validation, forward and reverse transformation,
-byte-exact uninstall restoration, line-ending preservation and Lua syntax
-validation against Zibo 4.05.35 and both supported LevelUp baselines. Mixed
-baseline rejection is also tested. Simulator-runtime validation of the stock
-Lua packages remains open.
+The patch has passed known-hash reporting, structural forward and reverse
+transformation, unrelated-change preservation, line-ending preservation and
+Lua syntax validation against Zibo 4.05.35 and both supported LevelUp
+baselines. Simulator-runtime validation of the stock Lua packages remains open.
 
 ## Disclaimer
 

@@ -10,7 +10,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from patchlib import PatchError, apply_exact_text_replacements
+from patchlib import (
+    PatchError,
+    apply_exact_text_replacements,
+    remove_exact_text_replacements,
+)
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -65,6 +69,24 @@ class TextPatchUnitTests(unittest.TestCase):
         self.assertEqual(
             b"one\r\ntwo\r\nthree\r\n",
             apply_exact_text_replacements(b"one\r\nthree\r\n", spec),
+        )
+
+    def test_remove_preserves_unowned_content(self) -> None:
+        spec = {
+            "format": "exact-text-replacements-v1",
+            "replacements": [
+                {
+                    "name": "owned",
+                    "oldLines": ["anchor"],
+                    "newLines": ["anchor", "-- BEGIN OWNED", "value", "-- END OWNED"],
+                }
+            ],
+        }
+        installed = apply_exact_text_replacements(b"before\nanchor\nafter\n", spec)
+        installed += b"-- unrelated later patch\n"
+        self.assertEqual(
+            b"before\nanchor\nafter\n-- unrelated later patch\n",
+            remove_exact_text_replacements(installed, spec),
         )
 
 
@@ -139,7 +161,7 @@ class InstallerIntegrationTests(unittest.TestCase):
                     )
                 )
                 self.assertEqual("wahltho.zibo-40535.auto-jetway", state["packageId"])
-                self.assertEqual("0.2.0", state["packageVersion"])
+                self.assertEqual("0.2.1", state["packageVersion"])
                 self.assertEqual(identifier, state["baselineId"])
                 self.assertEqual(2, len(state["files"]))
 
@@ -189,22 +211,26 @@ class InstallerIntegrationTests(unittest.TestCase):
                     self.assertEqual(0, syntax.returncode, msg=syntax.stdout + syntax.stderr)
 
                 installed_tablet = (aircraft_root / TARGETS[1]).read_bytes()
-                (aircraft_root / TARGETS[1]).write_bytes(
-                    installed_tablet + b"-- later change\n"
-                )
-                refused = self.run_installer(aircraft_root, "uninstall", expected=1)
-                self.assertIn("Installed file was changed after installation", refused.stderr)
-                (aircraft_root / TARGETS[1]).write_bytes(installed_tablet)
-
+                separator = b"" if installed_tablet.endswith((b"\r", b"\n")) else tablet_eol.encode()
+                unrelated = separator + b"-- later change" + tablet_eol.encode()
+                (aircraft_root / TARGETS[1]).write_bytes(installed_tablet + unrelated)
                 self.run_installer(aircraft_root, "uninstall")
+                self.assertEqual(original_hashes[TARGETS[0]], sha256(aircraft_root / TARGETS[0]))
                 self.assertEqual(
-                    original_hashes,
-                    {relative: sha256(aircraft_root / relative) for relative in TARGETS},
+                    original_hashes[TARGETS[1]],
+                    hashlib.sha256(
+                        (aircraft_root / TARGETS[1]).read_bytes().replace(
+                            unrelated, b""
+                        )
+                    ).hexdigest(),
+                )
+                self.assertTrue(
+                    (aircraft_root / TARGETS[1]).read_bytes().endswith(unrelated)
                 )
                 self.assertFalse((aircraft_root / ".zibo-auto-jetway-patch").exists())
                 self.run_installer(aircraft_root, "check")
 
-    def test_modified_source_is_rejected_without_writes(self) -> None:
+    def test_unowned_source_change_is_preserved(self) -> None:
         for identifier, upstream, name, _, _ in self.baselines:
             with self.subTest(baseline=identifier), tempfile.TemporaryDirectory(
                 prefix="auto-jetway-modified-"
@@ -212,21 +238,25 @@ class InstallerIntegrationTests(unittest.TestCase):
                 aircraft_root = Path(temporary) / name
                 self.copy_baseline(upstream, aircraft_root)
                 tablet = aircraft_root / TARGETS[1]
-                tablet.write_bytes(tablet.read_bytes() + b"-- local modification\n")
+                original = tablet.read_bytes()
+                eol = b"\r\n" if original.count(b"\r\n") > 0 else b"\n"
+                separator = b"" if original.endswith((b"\r", b"\n")) else eol
+                unrelated = separator + b"-- local modification" + eol
+                tablet.write_bytes(original + unrelated)
                 before = {
                     relative: sha256(aircraft_root / relative) for relative in TARGETS
                 }
-                result = self.run_installer(aircraft_root, "check", expected=1)
-                self.assertIn(
-                    "Unsupported, modified or mixed aircraft source files",
-                    result.stderr,
-                )
+                result = self.run_installer(aircraft_root, "check")
+                self.assertIn("validated structurally", result.stdout)
                 self.assertEqual(
                     before,
                     {relative: sha256(aircraft_root / relative) for relative in TARGETS},
                 )
+                self.run_installer(aircraft_root, "install")
+                self.run_installer(aircraft_root, "uninstall")
+                self.assertTrue(tablet.read_bytes().endswith(unrelated))
 
-    def test_mixed_levelup_baseline_pair_is_rejected(self) -> None:
+    def test_mixed_but_structurally_compatible_pair_is_supported(self) -> None:
         levelup_s1 = self.baselines[1][1]
         levelup_s150 = self.baselines[2][1]
         with tempfile.TemporaryDirectory(prefix="auto-jetway-mixed-") as temporary:
@@ -236,11 +266,8 @@ class InstallerIntegrationTests(unittest.TestCase):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(upstream / relative, destination)
             before = {relative: sha256(aircraft_root / relative) for relative in TARGETS}
-            result = self.run_installer(aircraft_root, "check", expected=1)
-            self.assertIn(
-                "Unsupported, modified or mixed aircraft source files",
-                result.stderr,
-            )
+            result = self.run_installer(aircraft_root, "check")
+            self.assertIn("validated structurally", result.stdout)
             self.assertEqual(
                 before,
                 {relative: sha256(aircraft_root / relative) for relative in TARGETS},
@@ -255,7 +282,7 @@ class InstallerIntegrationTests(unittest.TestCase):
 
             state_path = aircraft_root / ".zibo-auto-jetway-patch/state.json"
             state = json.loads(state_path.read_text(encoding="utf-8"))
-            self.assertEqual(identifier, state.pop("baselineId"))
+            state.pop("baselineId")
             state.pop("aircraftFamily")
             state.pop("aircraftRelease")
             state["packageVersion"] = "0.1.0"

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 - 2026-08-24
+
+- Accept structurally compatible shared Lua files even when unrelated patches
+  change their whole-file hashes.
+- Verify AUTO JETWAY-owned replacements semantically instead of requiring an
+  unchanged full-file hash after installation.
+- Uninstall only AUTO JETWAY-owned blocks and preserve unrelated later changes.
+- Retain exact baseline fingerprints for release identification and diagnostics.
+
 ## 0.2.0 - 2026-08-24
 
 - Add exact baseline support for LevelUp 737NG Series V2.S1 and V2.S1.50.

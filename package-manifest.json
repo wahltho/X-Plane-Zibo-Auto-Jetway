@@ -4,7 +4,7 @@
     "LevelUp 737NG Series for X-Plane 12"
   ],
   "packageId": "wahltho.zibo-40535.auto-jetway",
-  "packageVersion": "0.2.0",
+  "packageVersion": "0.2.1",
   "payloads": [
     {
       "path": "patches/B738.a_fms.lua.json",
@@ -26,7 +26,7 @@
       "compatibility default ON for missing, old or invalid config values",
       "global variant configuration ownership without livery override",
       "guards around all three stock automatic sim/ground_ops/jetway callsites",
-      "paired baseline detection for Zibo and LevelUp FMS and Tablet files"
+      "known baseline reporting plus structural validation of every owned patch block"
     ],
     "notIncluded": [
       "interception or replacement of the native X-Plane jetway command",

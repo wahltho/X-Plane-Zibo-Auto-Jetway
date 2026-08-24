@@ -58,6 +58,16 @@ def _find_sequence(lines: list[str], sequence: list[str]) -> list[int]:
     ]
 
 
+def _matches_are_inside(
+    inner_matches: list[int], inner_width: int, outer_start: int, outer_width: int
+) -> bool:
+    outer_end = outer_start + outer_width
+    return all(
+        outer_start <= start and start + inner_width <= outer_end
+        for start in inner_matches
+    )
+
+
 def apply_exact_text_replacements(data: bytes, spec: dict[str, Any]) -> bytes:
     if spec.get("format") != "exact-text-replacements-v1":
         raise PatchError("Unsupported text patch format")
@@ -72,11 +82,13 @@ def apply_exact_text_replacements(data: bytes, spec: dict[str, Any]) -> bytes:
         old_matches = _find_sequence(lines, old)
         new_matches = _find_sequence(lines, new)
         name = replacement.get("name", "unnamed replacement")
+        if len(new_matches) == 1 and _matches_are_inside(
+            old_matches, len(old), new_matches[0], len(new)
+        ):
+            continue
         if len(old_matches) == 1 and not new_matches:
             start = old_matches[0]
             lines[start : start + len(old)] = new
-        elif not old_matches and len(new_matches) == 1:
-            continue
         else:
             raise PatchError(
                 f"{name}: expected exactly one original block or one installed "
@@ -85,7 +97,42 @@ def apply_exact_text_replacements(data: bytes, spec: dict[str, Any]) -> bytes:
     return join_text_bytes(lines, eol, has_final_eol)
 
 
+def remove_exact_text_replacements(data: bytes, spec: dict[str, Any]) -> bytes:
+    if spec.get("format") != "exact-text-replacements-v1":
+        raise PatchError("Unsupported text patch format")
+    replacements = spec.get("replacements")
+    if not isinstance(replacements, list) or not replacements:
+        raise PatchError("Text patch contains no replacements")
+
+    lines, eol, has_final_eol = split_text_bytes(data)
+    for replacement in reversed(replacements):
+        old = replacement["oldLines"]
+        new = replacement["newLines"]
+        old_matches = _find_sequence(lines, old)
+        new_matches = _find_sequence(lines, new)
+        name = replacement.get("name", "unnamed replacement")
+        if len(new_matches) == 1 and _matches_are_inside(
+            old_matches, len(old), new_matches[0], len(new)
+        ):
+            start = new_matches[0]
+            lines[start : start + len(new)] = old
+        elif not new_matches and len(old_matches) == 1:
+            continue
+        else:
+            raise PatchError(
+                f"{name}: expected exactly one installed block or one original "
+                f"block; found installed={len(new_matches)}, original={len(old_matches)}"
+            )
+    return join_text_bytes(lines, eol, has_final_eol)
+
+
 def apply_operation(data: bytes, operation: str, spec: dict[str, Any]) -> bytes:
     if operation == "exact-text-replacements-v1":
         return apply_exact_text_replacements(data, spec)
+    raise PatchError(f"Unsupported patch operation: {operation}")
+
+
+def remove_operation(data: bytes, operation: str, spec: dict[str, Any]) -> bytes:
+    if operation == "exact-text-replacements-v1":
+        return remove_exact_text_replacements(data, spec)
     raise PatchError(f"Unsupported patch operation: {operation}")

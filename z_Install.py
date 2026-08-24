@@ -14,7 +14,14 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from patchlib import PatchError, apply_operation, load_json, sha256_bytes, sha256_path
+from patchlib import (
+    PatchError,
+    apply_operation,
+    load_json,
+    remove_operation,
+    sha256_bytes,
+    sha256_path,
+)
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -105,7 +112,9 @@ def _target_path(aircraft_root: Path, target: dict[str, Any]) -> Path:
     return aircraft_root / _safe_relative_path(target["relativePath"])
 
 
-def _detect_baseline(aircraft_root: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+def _detect_baseline(
+    aircraft_root: Path, manifest: dict[str, Any]
+) -> dict[str, Any] | None:
     actual: dict[str, str] = {}
     for target in manifest["targets"]:
         path = _target_path(aircraft_root, target)
@@ -123,34 +132,38 @@ def _detect_baseline(aircraft_root: Path, manifest: dict[str, Any]) -> dict[str,
     if len(matches) > 1:
         raise PatchError("Source files ambiguously match multiple supported baselines")
 
-    details = "\n".join(f"  {relative}: {digest}" for relative, digest in sorted(actual.items()))
-    supported = ", ".join(baseline["id"] for baseline in manifest["supportedBaselines"])
-    raise PatchError(
-        "Unsupported, modified or mixed aircraft source files:\n"
-        f"{details}\n"
-        f"  supported baseline sets: {supported}"
-    )
+    return None
 
 
 def _transform_targets(
-    aircraft_root: Path, manifest: dict[str, Any], baseline: dict[str, Any]
+    aircraft_root: Path, manifest: dict[str, Any], baseline: dict[str, Any] | None
 ) -> dict[str, bytes]:
     transformed: dict[str, bytes] = {}
-    baseline_files = _baseline_file_map(baseline)
+    baseline_files = _baseline_file_map(baseline) if baseline is not None else None
     for target in manifest["targets"]:
         relative = target["relativePath"]
         source = _target_path(aircraft_root, target).read_bytes()
         payload = load_json(PACKAGE_ROOT / _safe_relative_path(target["payload"]))
         result = apply_operation(source, target["operation"], payload)
         actual = sha256_bytes(result)
-        expected = baseline_files[relative]["resultSha256"]
-        if actual != expected:
+        expected = baseline_files[relative]["resultSha256"] if baseline_files else None
+        if expected is not None and actual != expected:
             raise PatchError(
                 f"Generated result hash mismatch for {baseline['id']}: {relative}\n"
                 f"  actual: {actual}\n"
                 f"  expected: {expected}"
             )
         transformed[relative] = result
+    return transformed
+
+
+def _remove_targets(aircraft_root: Path, manifest: dict[str, Any]) -> dict[str, bytes]:
+    transformed: dict[str, bytes] = {}
+    for target in manifest["targets"]:
+        relative = target["relativePath"]
+        source = _target_path(aircraft_root, target).read_bytes()
+        payload = load_json(PACKAGE_ROOT / _safe_relative_path(target["payload"]))
+        transformed[relative] = remove_operation(source, target["operation"], payload)
     return transformed
 
 
@@ -169,12 +182,16 @@ def _verify_state(aircraft_root: Path, state: dict[str, Any], manifest: dict[str
         path = aircraft_root / _safe_relative_path(item["relativePath"])
         if not path.is_file():
             raise PatchError(f"Installed file is missing: {item['relativePath']}")
-        actual = sha256_path(path)
-        if actual != item["installedSha256"]:
+        current = path.read_bytes()
+        target = next(
+            target for target in manifest["targets"]
+            if target["relativePath"] == item["relativePath"]
+        )
+        payload = load_json(PACKAGE_ROOT / _safe_relative_path(target["payload"]))
+        verified = apply_operation(current, target["operation"], payload)
+        if verified != current:
             raise PatchError(
-                f"Installed file was changed after installation: {item['relativePath']}\n"
-                f"  actual: {actual}\n"
-                f"  expected: {item['installedSha256']}"
+                f"Installed AUTO JETWAY blocks are missing from: {item['relativePath']}"
             )
 
 
@@ -188,10 +205,13 @@ def command_check(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     baseline = _detect_baseline(aircraft_root, manifest)
     _transform_targets(aircraft_root, manifest, baseline)
     print(f"Ready to install {manifest['packageId']} {manifest['packageVersion']}")
-    print(
-        f"Detected baseline: {baseline['id']} "
-        f"({baseline['aircraftFamily']} {baseline['release']})"
-    )
+    if baseline is not None:
+        print(
+            f"Detected baseline: {baseline['id']} "
+            f"({baseline['aircraftFamily']} {baseline['release']})"
+        )
+    else:
+        print("No exact baseline fingerprint; all owned patch anchors validated structurally.")
     print(f"Validated {len(manifest['targets'])} source files; no files were changed.")
     return 0
 
@@ -247,9 +267,9 @@ def command_install(aircraft_root: Path, manifest: dict[str, Any]) -> int:
             "packageId": manifest["packageId"],
             "packageVersion": manifest["packageVersion"],
             "manifestSha256": sha256_path(MANIFEST_PATH),
-            "baselineId": baseline["id"],
-            "aircraftFamily": baseline["aircraftFamily"],
-            "aircraftRelease": baseline["release"],
+            "baselineId": baseline["id"] if baseline is not None else None,
+            "aircraftFamily": baseline["aircraftFamily"] if baseline is not None else None,
+            "aircraftRelease": baseline["release"] if baseline is not None else None,
             "installedAtUtc": datetime.now(timezone.utc).isoformat(),
             "backupRelativePath": backup_root.relative_to(aircraft_root).as_posix(),
             "files": state_files,
@@ -285,11 +305,7 @@ def command_uninstall(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     if state is None:
         raise PatchError("The AUTO JETWAY patch is not installed")
     _verify_state(aircraft_root, state, manifest)
-    backup_root = aircraft_root / _safe_relative_path(state["backupRelativePath"])
-    for item in state["files"]:
-        backup = backup_root / _safe_relative_path(item["relativePath"])
-        if not backup.is_file() or sha256_path(backup) != item["originalSha256"]:
-            raise PatchError(f"Backup integrity check failed: {item['relativePath']}")
+    transformed = _remove_targets(aircraft_root, manifest)
 
     state_root = aircraft_root / STATE_DIRECTORY
     with tempfile.TemporaryDirectory(prefix="auto-jetway-restore-", dir=state_root) as name:
@@ -298,12 +314,12 @@ def command_uninstall(aircraft_root: Path, manifest: dict[str, Any]) -> int:
         rollback: dict[str, Path] = {}
         for item in state["files"]:
             relative = item["relativePath"]
-            backup = backup_root / _safe_relative_path(relative)
             temporary = staging_root / _safe_relative_path(relative)
             temporary.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(backup, temporary)
-            staged[relative] = temporary
+            temporary.write_bytes(transformed[relative])
             current = aircraft_root / _safe_relative_path(relative)
+            os.chmod(temporary, stat.S_IMODE(current.stat().st_mode))
+            staged[relative] = temporary
             rollback_file = staging_root / "installed" / _safe_relative_path(relative)
             rollback_file.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(current, rollback_file)
@@ -321,7 +337,7 @@ def command_uninstall(aircraft_root: Path, manifest: dict[str, Any]) -> int:
             raise
 
     shutil.rmtree(state_root)
-    print(f"Uninstalled {manifest['packageId']} and restored both original files.")
+    print(f"Uninstalled {manifest['packageId']} and removed only its owned blocks.")
     return 0
 
 
