@@ -3,12 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from patchlib import (
     PatchError,
@@ -40,7 +42,35 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def find_lua51_compiler() -> str | None:
+    seen: set[str] = set()
+    for command in ("luac5.1", "luac-5.1", "luac"):
+        compiler = shutil.which(command)
+        if compiler is None or compiler in seen:
+            continue
+        seen.add(compiler)
+        version = subprocess.run(
+            [compiler, "-v"], capture_output=True, text=True, check=False
+        )
+        banner = " ".join(part.strip() for part in (version.stdout, version.stderr) if part.strip())
+        if version.returncode == 0 and re.search(r"\bLua\s+5\.1(?:\.\d+)?\b", banner):
+            return compiler
+    return None
+
+
 class TextPatchUnitTests(unittest.TestCase):
+    def test_lua54_compiler_is_not_selected(self) -> None:
+        def which(command: str) -> str | None:
+            return "/usr/bin/luac" if command == "luac" else None
+
+        completed = subprocess.CompletedProcess(
+            ["/usr/bin/luac", "-v"], 0, "Lua 5.4.8", ""
+        )
+        with patch.object(shutil, "which", side_effect=which), patch.object(
+            subprocess, "run", return_value=completed
+        ):
+            self.assertIsNone(find_lua51_compiler())
+
     def test_ambiguous_original_block_is_rejected(self) -> None:
         spec = {
             "format": "exact-text-replacements-v1",
@@ -195,7 +225,7 @@ class InstallerIntegrationTests(unittest.TestCase):
                 self.assertEqual(1, tablet.count('find_command("sim/ground_ops/jetway")'))
                 self.assertNotIn('create_command("sim/ground_ops/jetway"', tablet)
 
-                luac = shutil.which("luac")
+                luac = find_lua51_compiler()
                 if luac:
                     syntax = subprocess.run(
                         [
