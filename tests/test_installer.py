@@ -36,6 +36,10 @@ BASELINES = (
         "\r\n",
     ),
 )
+ZIBO_40535_SOURCE_HASHES = {
+    TARGETS[0]: "ff313b0e88c62845ad1c4a2b1f4bd599f57d8799e8d6707bfc10a3369fd63a8e",
+    TARGETS[1]: "7c9e445a2a002f1ef81a0b738ad3c3b791a63c2c313d44d993517e260cd32141",
+}
 
 
 def sha256(path: Path) -> str:
@@ -136,6 +140,21 @@ class InstallerIntegrationTests(unittest.TestCase):
             (identifier, Path(os.environ[environment]), name, fms_eol, tablet_eol)
             for identifier, environment, name, fms_eol, tablet_eol in BASELINES
         ]
+        zibo_root = cls.baselines[0][1]
+        version_path = zibo_root / "version.txt"
+        if not version_path.is_file() or version_path.read_text(
+            encoding="utf-8-sig"
+        ).strip() != "4.05.35":
+            raise RuntimeError(
+                "ZIBO_40535_ROOT must point to the effective 4.05.35 update tree"
+            )
+        actual_hashes = {
+            relative: sha256(zibo_root / relative) for relative in TARGETS
+        }
+        if actual_hashes != ZIBO_40535_SOURCE_HASHES:
+            raise RuntimeError(
+                "ZIBO_40535_ROOT does not contain the verified 4.05.35 target files"
+            )
 
     def copy_baseline(self, upstream: Path, aircraft_root: Path) -> dict[str, str]:
         for relative in TARGETS:
@@ -191,7 +210,7 @@ class InstallerIntegrationTests(unittest.TestCase):
                     )
                 )
                 self.assertEqual("wahltho.zibo-40535.auto-jetway", state["packageId"])
-                self.assertEqual("0.2.2", state["packageVersion"])
+                self.assertEqual("0.2.3", state["packageVersion"])
                 self.assertEqual(identifier, state["baselineId"])
                 self.assertEqual(2, len(state["files"]))
 

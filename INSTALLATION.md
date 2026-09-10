@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- A structurally compatible Zibo or LevelUp installation. Known tested
+- A structurally compatible Zibo or LevelUp installation. Known supported
   baselines are Zibo 4.05.35, LevelUp V2.S1 and LevelUp V2.S1.50.
 - Python 3.10 or newer.
 - X-Plane closed while files are changed.
@@ -65,3 +65,7 @@ unpatched upstream version ignores unknown keys.
 Existing v0.1.0 Zibo installations use the same package ID and state directory.
 They remain verifiable and uninstallable with this installer; no feature
 reinstall is required.
+
+Existing v0.2.2 installations already contain the same patch payload and do
+not require reinstallation for v0.2.3. The newer release corrects baseline
+identification and provenance metadata only.

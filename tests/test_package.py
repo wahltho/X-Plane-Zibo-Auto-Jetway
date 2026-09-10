@@ -17,7 +17,7 @@ class PackageContractTests(unittest.TestCase):
         )
         self.assertEqual(3, manifest["schemaVersion"])
         self.assertEqual("compatibilityPackage", manifest["packageType"])
-        self.assertEqual("0.2.2", manifest["packageVersion"])
+        self.assertEqual("0.2.3", manifest["packageVersion"])
         self.assertEqual(
             ["zibo-737ng", "levelup-737ng"],
             manifest["supportedProducts"],
@@ -31,6 +31,28 @@ class PackageContractTests(unittest.TestCase):
         self.assertEqual(
             {"zibo-4.05.35", "levelup-v2.s1", "levelup-v2.s1.50"},
             {baseline["id"] for baseline in baselines},
+        )
+        zibo = next(
+            baseline for baseline in baselines if baseline["id"] == "zibo-4.05.35"
+        )
+        self.assertEqual(
+            {
+                "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua": {
+                    "sourceSha256": "ff313b0e88c62845ad1c4a2b1f4bd599f57d8799e8d6707bfc10a3369fd63a8e",
+                    "resultSha256": "6dc07cac5cd89c4645890ed4d29f0bf1c6ccddba62cc31b2be827bb0f7c8f9d6",
+                },
+                "plugins/xlua/scripts/B738.tablet/B738.tablet.lua": {
+                    "sourceSha256": "7c9e445a2a002f1ef81a0b738ad3c3b791a63c2c313d44d993517e260cd32141",
+                    "resultSha256": "ce0e634c979696c0f17a9c2a2fd69bfe72b243b2c266fce6ea1486951ffca76d",
+                },
+            },
+            {
+                item["relativePath"]: {
+                    "sourceSha256": item["sourceSha256"],
+                    "resultSha256": item["resultSha256"],
+                }
+                for item in zibo["files"]
+            },
         )
         fingerprints = set()
         for baseline in baselines:

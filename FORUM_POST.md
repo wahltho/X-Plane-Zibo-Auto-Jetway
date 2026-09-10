@@ -25,12 +25,13 @@ Only the stock `B738.a_fms.lua` and `B738.tablet.lua` files are patched. No
 complete aircraft file and no modified `zibomod.xpl` is distributed.
 
 The attached package includes a hash-checking installer, automatic backups,
-verification and safe uninstall. It supports untouched Zibo 4.05.35, LevelUp
-V2.S1 and LevelUp V2.S1.50 source pairs. Modified, mixed or unsupported
-targets are refused before any write.
+verification and safe uninstall. It supports Zibo 4.05.35, LevelUp V2.S1 and
+LevelUp V2.S1.50. Exact known pairs are identified by hash; other targets must
+pass unambiguous structural validation of every AUTO JETWAY-owned block.
 
-Static package validation, Lua syntax validation and byte-exact uninstall
-restoration have passed. Stock-Lua simulator testing remains open, so this is
+The unchanged payload has passed structural application and byte-exact inverse
+validation against the effective Zibo 4.05.35 files. A complete v0.2.3
+automated-suite rerun and Stock-Lua simulator testing remain open, so this is
 provided as an experimental test candidate. Feedback for all three lifecycle
 points, manual command pass-through, aircraft reload and full X-Plane restart
 would be appreciated.

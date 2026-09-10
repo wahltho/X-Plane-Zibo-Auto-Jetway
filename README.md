@@ -65,7 +65,7 @@ blocks and preserves unrelated changes made before or after installation.
 
 The historical package ID and state-directory name are intentionally retained
 so an existing v0.1.0 Zibo installation remains verifiable and safely
-uninstallable with v0.2.1. The AUTO JETWAY source transformation itself is
+uninstallable with v0.2.3. The AUTO JETWAY source transformation itself is
 unchanged for that Zibo baseline, so reinstalling the feature is unnecessary.
 
 See `INSTALLATION.md` for the complete procedure and `RUNTIME_TEST_PLAN.md`
@@ -83,10 +83,11 @@ manifest-driven aircraft maintenance tool.
 
 ## Validation status
 
-The patch has passed known-hash reporting, structural forward and reverse
-transformation, unrelated-change preservation, line-ending preservation and
-Lua syntax validation against Zibo 4.05.35 and both supported LevelUp
-baselines. Simulator-runtime validation of the stock Lua packages remains open.
+The unchanged patch payload has been validated for unique structural
+application and byte-exact reversal against the effective Zibo 4.05.35 files.
+Earlier automated coverage remains available for both supported LevelUp
+baselines; a complete v0.2.3 suite rerun remains pending. Simulator-runtime
+validation of the stock Lua packages remains open.
 
 ## Disclaimer
 

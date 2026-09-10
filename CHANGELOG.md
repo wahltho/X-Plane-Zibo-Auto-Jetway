@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.3 - 2026-09-10
+
+- Correct the Zibo 4.05.35 source and installed-result fingerprints to use the
+  cumulative 4.05.35 update files instead of the 4.05.00 base files.
+- Add an integration-fixture provenance guard for `version.txt` and both Zibo
+  target hashes.
+- Keep the patch payload and runtime behavior unchanged; existing v0.2.2
+  installations do not require reinstallation.
+
 ## 0.2.2 - 2026-08-24
 
 - Add a backward-compatible schema-3 compatibility module for online Toolkit

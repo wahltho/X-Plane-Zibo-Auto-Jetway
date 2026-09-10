@@ -6,7 +6,7 @@
   "aircraftFamily": "Zibo and LevelUp 737NG aircraft",
   "packageId": "wahltho.zibo-40535.auto-jetway",
   "packageType": "compatibilityPackage",
-  "packageVersion": "0.2.2",
+  "packageVersion": "0.2.3",
   "payloads": [
     {
       "path": "patches/B738.a_fms.lua.json",
@@ -86,13 +86,13 @@
       "files": [
         {
           "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
-          "resultSha256": "d603ccd5e8ca9ad52972112f1f34ff3843f22a1173ba515eacfbd61e77ae211f",
-          "sourceSha256": "e2e427adffb030a3b7c8dc02a1adb971417be61bd22aa67a18e08f14d9d9390a"
+          "resultSha256": "6dc07cac5cd89c4645890ed4d29f0bf1c6ccddba62cc31b2be827bb0f7c8f9d6",
+          "sourceSha256": "ff313b0e88c62845ad1c4a2b1f4bd599f57d8799e8d6707bfc10a3369fd63a8e"
         },
         {
           "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
-          "resultSha256": "397eaa6babefe43031a7b16626678b691fc3a5cf150617ffd7642f882d6aec95",
-          "sourceSha256": "89598db3a999bade26faf960ad5c76f2d15bb08e7b1f8106a597e2998a2e8c72"
+          "resultSha256": "ce0e634c979696c0f17a9c2a2fd69bfe72b243b2c266fce6ea1486951ffca76d",
+          "sourceSha256": "7c9e445a2a002f1ef81a0b738ad3c3b791a63c2c313d44d993517e260cd32141"
         }
       ],
       "id": "zibo-4.05.35",

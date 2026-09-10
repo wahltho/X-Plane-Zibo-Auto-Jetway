@@ -3,13 +3,17 @@
 ## Target baselines
 
 The package was derived from locally preserved, untouched stock Zibo and
-LevelUp aircraft files. No complete upstream file is distributed by this
-repository.
+LevelUp aircraft files. The effective Zibo 4.05.35 baseline is the stock
+4.05.00 base plus the cumulative 4.05.35 update, with an update file taking
+precedence whenever its relative path exists. Both Lua targets below are owned
+by that update; their hashes also match the original update ZIP whose
+`version.txt` reports `4.05.35`. No complete upstream file is distributed by
+this repository.
 
 | Baseline | File | Source SHA-256 | Installed SHA-256 |
 |---|---|---|---|
-| Zibo 4.05.35 | `B738.a_fms.lua` | `e2e427adffb030a3b7c8dc02a1adb971417be61bd22aa67a18e08f14d9d9390a` | `d603ccd5e8ca9ad52972112f1f34ff3843f22a1173ba515eacfbd61e77ae211f` |
-| Zibo 4.05.35 | `B738.tablet.lua` | `89598db3a999bade26faf960ad5c76f2d15bb08e7b1f8106a597e2998a2e8c72` | `397eaa6babefe43031a7b16626678b691fc3a5cf150617ffd7642f882d6aec95` |
+| Zibo 4.05.35 | `B738.a_fms.lua` | `ff313b0e88c62845ad1c4a2b1f4bd599f57d8799e8d6707bfc10a3369fd63a8e` | `6dc07cac5cd89c4645890ed4d29f0bf1c6ccddba62cc31b2be827bb0f7c8f9d6` |
+| Zibo 4.05.35 | `B738.tablet.lua` | `7c9e445a2a002f1ef81a0b738ad3c3b791a63c2c313d44d993517e260cd32141` | `ce0e634c979696c0f17a9c2a2fd69bfe72b243b2c266fce6ea1486951ffca76d` |
 | LevelUp V2.S1 | `B738.a_fms.lua` | `43916b6288d397854a24ce59745967f50d13e6d183f51137364463d0f398f582` | `2474610fecbac8e05c580a95c9880ba090d770a49167dd6708c96d0e2c7b0096` |
 | LevelUp V2.S1 | `B738.tablet.lua` | `89598db3a999bade26faf960ad5c76f2d15bb08e7b1f8106a597e2998a2e8c72` | `397eaa6babefe43031a7b16626678b691fc3a5cf150617ffd7642f882d6aec95` |
 | LevelUp V2.S1.50 | `B738.a_fms.lua` | `757057120c2953a9cdefbfebcd593bdb4fd9636721328fb1ce6d6550f8f49384` | `99d981f0b7824140b35b2334cbfc303d1e8ce3b62eed3b63b3f6575c05e1be42` |
@@ -19,9 +23,13 @@ Zibo 4.05.35 and LevelUp V2.S1 use CRLF for FMS and LF for Tablet. LevelUp
 V2.S1.50 uses CRLF for both. The installer preserves each target's existing
 convention.
 
-Manifest schema 3 binds both files into one detected baseline. A valid file
-from one release combined with a valid file from another is rejected before
-any write.
+Manifest schema 3 reports an exact baseline only when both hashes match the
+same known pair. Other structurally compatible files remain eligible only when
+every owned replacement anchor validates unambiguously.
+
+Version 0.2.3 corrects Zibo hashes that earlier releases mislabeled as 4.05.35
+even though they came from the 4.05.00 base tree. The patch payload and runtime
+behavior are unchanged.
 
 ## Owner chain
 
