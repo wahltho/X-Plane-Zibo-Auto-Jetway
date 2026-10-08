@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from standalone_guard import native_operation, owned_write, owned_replace, owned_unlink, owned_copy, owned_rmtree, owned_mkdir
+
 import argparse
 import json
 import os
@@ -168,11 +170,11 @@ def _remove_targets(aircraft_root: Path, manifest: dict[str, Any]) -> dict[str, 
 
 
 def _write_json_atomic(path: Path, value: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    owned_mkdir(path.parent, parents=True, exist_ok=True)
     payload = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
     temporary = path.with_name(path.name + ".tmp")
-    temporary.write_bytes(payload)
-    os.replace(temporary, path)
+    owned_write(temporary, payload)
+    owned_replace(temporary, path)
 
 
 def _verify_state(aircraft_root: Path, state: dict[str, Any], manifest: dict[str, Any]) -> None:
@@ -195,6 +197,7 @@ def _verify_state(aircraft_root: Path, state: dict[str, Any], manifest: dict[str
             )
 
 
+@native_operation
 def command_check(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     state = _load_state(aircraft_root)
     if state is not None:
@@ -216,6 +219,7 @@ def command_check(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     return 0
 
 
+@native_operation
 def command_install(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     state = _load_state(aircraft_root)
     if state is not None:
@@ -229,15 +233,15 @@ def command_install(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     state_root = aircraft_root / STATE_DIRECTORY
     backup_root = state_root / "backups" / timestamp
-    backup_root.mkdir(parents=True, exist_ok=False)
+    owned_mkdir(backup_root, parents=True, exist_ok=False)
     state_files: list[dict[str, Any]] = []
 
     for target in manifest["targets"]:
         relative = target["relativePath"]
         source = _target_path(aircraft_root, target)
         backup = backup_root / _safe_relative_path(relative)
-        backup.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, backup)
+        owned_mkdir(backup.parent, parents=True, exist_ok=True)
+        owned_copy(source, backup)
         state_files.append(
             {
                 "relativePath": relative,
@@ -254,13 +258,13 @@ def command_install(aircraft_root: Path, manifest: dict[str, Any]) -> int:
                 relative = target["relativePath"]
                 destination = _target_path(aircraft_root, target)
                 temporary = staging_root / _safe_relative_path(relative)
-                temporary.parent.mkdir(parents=True, exist_ok=True)
-                temporary.write_bytes(transformed[relative])
+                owned_mkdir(temporary.parent, parents=True, exist_ok=True)
+                owned_write(temporary, transformed[relative])
                 os.chmod(temporary, stat.S_IMODE(destination.stat().st_mode))
                 staged[relative] = temporary
             for target in manifest["targets"]:
                 relative = target["relativePath"]
-                os.replace(staged[relative], _target_path(aircraft_root, target))
+                owned_replace(staged[relative], _target_path(aircraft_root, target))
 
         state_document = {
             "schemaVersion": 1,
@@ -281,7 +285,7 @@ def command_install(aircraft_root: Path, manifest: dict[str, Any]) -> int:
             backup = backup_root / _safe_relative_path(relative)
             destination = _target_path(aircraft_root, target)
             if backup.exists():
-                shutil.copy2(backup, destination)
+                owned_copy(backup, destination)
         raise
 
     print(f"Installed {manifest['packageId']} {manifest['packageVersion']}.")
@@ -290,6 +294,7 @@ def command_install(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     return 0
 
 
+@native_operation
 def command_verify(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     state = _load_state(aircraft_root)
     if state is None:
@@ -300,6 +305,7 @@ def command_verify(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     return 0
 
 
+@native_operation
 def command_uninstall(aircraft_root: Path, manifest: dict[str, Any]) -> int:
     state = _load_state(aircraft_root)
     if state is None:
@@ -315,28 +321,28 @@ def command_uninstall(aircraft_root: Path, manifest: dict[str, Any]) -> int:
         for item in state["files"]:
             relative = item["relativePath"]
             temporary = staging_root / _safe_relative_path(relative)
-            temporary.parent.mkdir(parents=True, exist_ok=True)
+            owned_mkdir(temporary.parent, parents=True, exist_ok=True)
             temporary.write_bytes(transformed[relative])
             current = aircraft_root / _safe_relative_path(relative)
             os.chmod(temporary, stat.S_IMODE(current.stat().st_mode))
             staged[relative] = temporary
             rollback_file = staging_root / "installed" / _safe_relative_path(relative)
-            rollback_file.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(current, rollback_file)
+            owned_mkdir(rollback_file.parent, parents=True, exist_ok=True)
+            owned_copy(current, rollback_file)
             rollback[relative] = rollback_file
         try:
             for item in state["files"]:
                 relative = item["relativePath"]
-                os.replace(staged[relative], aircraft_root / _safe_relative_path(relative))
+                owned_replace(staged[relative], aircraft_root / _safe_relative_path(relative))
         except Exception:
             for item in state["files"]:
                 relative = item["relativePath"]
                 rollback_file = rollback[relative]
                 if rollback_file.exists():
-                    shutil.copy2(rollback_file, aircraft_root / _safe_relative_path(relative))
+                    owned_copy(rollback_file, aircraft_root / _safe_relative_path(relative))
             raise
 
-    shutil.rmtree(state_root)
+    owned_rmtree(state_root)
     print(f"Uninstalled {manifest['packageId']} and removed only its owned blocks.")
     return 0
 

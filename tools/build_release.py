@@ -23,6 +23,8 @@ PACKAGE_FILES = (
     "patches/B738.a_fms.lua.json",
     "patches/B738.tablet.lua.json",
     "z_Install.py",
+    "standalone_guard.py",
+    "standalone-ownership.json",
 )
 MODULE_ID = "auto-jetway"
 MODULE_PAYLOADS = (

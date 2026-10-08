@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "packageId": "wahltho.zibo-40535.auto-jetway",
+    "displayName": "AUTO JETWAY",
+    "repositoryUrl": "https://github.com/wahltho/X-Plane-Zibo-Auto-Jetway",
+    "supportedProducts": [
+      "zibo-737ng",
+      "levelup-737ng"
+    ],
+    "moduleIds": [
+      "auto-jetway"
+    ],
+    "targetPaths": [
+      "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
+      "plugins/xlua/scripts/B738.tablet/B738.tablet.lua"
+    ],
+    "standaloneEvidencePaths": [
+      ".zibo-auto-jetway-patch/state.json",
+      ".patch-ownership/wahltho.zibo-40535.auto-jetway/receipt.json",
+      ".patch-ownership/wahltho.zibo-40535.auto-jetway.lock",
+      ".patch-ownership/wahltho.zibo-40535.auto-jetway/transaction"
+    ],
+    "payloadPaths": [],
+    "markerNamespaces": [],
+    "signatures": [
+      {
+        "relativePath": "plugins/xlua/scripts/B738.a_fms/B738.a_fms.lua",
+        "text": "laminar/B738/tab/auto_jetway"
+      },
+      {
+        "relativePath": "plugins/xlua/scripts/B738.tablet/B738.tablet.lua",
+        "text": "laminar/B738/tab/auto_jetway"
+      }
+    ],
+    "resultFiles": [],
+    "originalFiles": [],
+    "recoveryInstruction": "Before switching to MTK, use the restore or uninstall procedure documented by this patch, preserving other patches. Then rescan. Instructions: https://github.com/wahltho/X-Plane-Zibo-Auto-Jetway#readme."
+  },
+  "nativeState": {
+    "kind": "files",
+    "path": ".zibo-auto-jetway-patch/state.json"
+  }
+}
